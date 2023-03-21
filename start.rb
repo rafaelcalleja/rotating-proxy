@@ -85,9 +85,13 @@ module Service
   class Tor < Base
     attr_reader :port, :control_port
 
-    def initialize(port, control_port)
+    def initialize(port, control_port, exit_nodes)
         @port = port
         @control_port = control_port
+        @exit_nodes = exit_nodes
+        if !exit_nodes.nil?
+          @exit_nodes = exit_nodes.split(',').map { |i| "\{#{i}\}"}.join(',')
+        end
     end
 
     def data_directory
@@ -96,23 +100,31 @@ module Service
 
     def start
       super
-      self.class.fire_and_forget(executable,
+      args = [
         "--SocksPort #{port}",
-	"--ControlPort #{control_port}",
+	      "--ControlPort #{control_port}",
         "--NewCircuitPeriod 15",
-	"--MaxCircuitDirtiness 15",
-	"--UseEntryGuards 0",
-	"--UseEntryGuardsAsDirGuards 0",
-	"--CircuitBuildTimeout 5",
-	"--ExitRelay 0",
-	"--RefuseUnknownExits 0",
-	"--ClientOnly 1",
-	"--AllowSingleHopCircuits 1",
+	      "--MaxCircuitDirtiness 15",
+	      "--UseEntryGuards 0",
+	      "--UseEntryGuardsAsDirGuards 0",
+	      "--CircuitBuildTimeout 5",
+	      "--ExitRelay 0",
+	      "--RefuseUnknownExits 0",
+	      "--ClientOnly 1",
+	      "--AllowSingleHopCircuits 1",
         "--DataDirectory #{data_directory}",
         "--PidFile #{pid_file}",
         "--Log \"warn syslog\"",
         '--RunAsDaemon 1',
-        "| logger -t 'tor' 2>&1")
+        "| logger -t 'tor' 2>&1"
+      ]
+      if !@exit_nodes.empty?
+        args.append("--ExitNodes #{@exit_nodes}")
+        args.append("--StrictNodes 1")
+      end
+
+      args.append("| logger -t 'tor' 2>&1")
+      self.class.fire_and_forget(executable, *args)
     end
 
     def newnym
@@ -162,9 +174,9 @@ module Service
     attr_reader :id
     attr_reader :tor, :polipo
 
-    def initialize(id)
+    def initialize(id, exit_nodes)
       @id = id
-      @tor = Tor.new(tor_port, tor_control_port)
+      @tor = Tor.new(tor_port, tor_control_port, exit_nodes)
       @polipo = Polipo.new(polipo_port, tor: tor)
     end
 
@@ -251,8 +263,9 @@ haproxy = Service::Haproxy.new
 proxies = []
 
 tor_instances = ENV['tors'] || 10
+exit_nodes = ENV['exitnodes'] || ''
 tor_instances.to_i.times.each do |id|
-  proxy = Service::Proxy.new(id)
+  proxy = Service::Proxy.new(id, exit_nodes)
   haproxy.add_backend(proxy)
   proxy.start
   proxies << proxy
