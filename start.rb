@@ -222,6 +222,40 @@ module Service
     end
   end
 
+  class HealthCheck
+    attr_reader :listen_port, :proxy_port, :target_url
+    attr_reader :service_pid
+
+    def initialize(listen_port, proxy_url, target_url)
+      @listen_port = listen_port
+      @proxy_url = proxy_url
+      @target_url = target_url
+    end
+
+    def start
+      cmd = "healtcheck -proxy #{@proxy_url} -port #{@listen_port} -url #{@target_url}"
+      puts "Running: #{cmd}"
+      @service_pid = Process.spawn(cmd, [:out, :err]=>["/tmp/healtcheck_#{@listen_port}.log", "w"])
+      Process.detach(@service_pid)
+      status = $?.exitstatus
+      puts "Command exited with status: #{status}"
+    end
+
+    def stop
+      Process.kill('TERM', @service_pid)
+    end
+
+    def restart
+      stop
+      sleep 5
+      start
+    end
+
+    def port
+      @listen_port
+    end
+  end
+
   class Haproxy < Base
     attr_reader :backends
 
@@ -266,8 +300,10 @@ tor_instances = ENV['tors'] || 10
 exit_nodes = ENV['exitnodes'] || ''
 tor_instances.to_i.times.each do |id|
   proxy = Service::Proxy.new(id, exit_nodes)
+  health_check = Service::HealthCheck.new(id + 40000, "http://127.0.0.1:#{id + 20000}", 'http://ifconfig.me')
   haproxy.add_backend(proxy)
   proxy.start
+  health_check.start
   proxies << proxy
 end
 
