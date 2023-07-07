@@ -36,8 +36,9 @@ frontend rotating_proxies
   option http_proxy
 
 backend tor
+  option httpchk GET /
   balance leastconn # http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#balance
 
   <% backends.each do |b| %>
-  server <%= b[:name] %><%= b[:port] %> <%= b[:addr] %>:<%= b[:port] %>
+  server <%= b[:name] %><%= b[:port] %> <%= b[:addr] %>:<%= b[:port] %> check port <%= b[:port].to_i + 20000 %> inter 10s
   <% end %>
