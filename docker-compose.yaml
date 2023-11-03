@@ -1,8 +1,11 @@
 version: '3.7'
 services:
   torproxy:
-    image: 'rafaelcalleja/rotatting-proxy:latest'
+    image: '${DOCKER_IMAGE:-rafaelcalleja/rotatting-proxy}:${DOCKER_TAG:-latest}'
     ports:
       - '${HAPROXY_PORT:-4444}:4444'
       - '${PROXY_PORT:-5566}:5566'
+      - '${PROXY_STICKY_PORT:-5568}:5568'
     restart: on-failure
+    volumes:
+      - ./haproxy.cfg.erb:/usr/local/etc/haproxy.cfg.erb
