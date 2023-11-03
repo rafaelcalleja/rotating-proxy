@@ -29,6 +29,10 @@ listen stats
   stats show-node
   stats uri /haproxy?stats
 
+frontend rotating_sticky_proxies
+  bind *:<%= port.to_i + 2 %>
+  default_backend tor_sticky
+  option http_proxy
 
 frontend rotating_proxies
   bind *:<%= port %>
@@ -38,6 +42,16 @@ frontend rotating_proxies
 backend tor
   option httpchk GET /
   balance leastconn # http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#balance
+
+  <% backends.each do |b| %>
+  server <%= b[:name] %><%= b[:port] %> <%= b[:addr] %>:<%= b[:port] %> check port <%= b[:port].to_i + 20000 %> inter 10s
+  <% end %>
+
+backend tor_sticky
+  stick-table type ip size 200k expire 30m
+  stick on src
+  option httpchk GET /
+  balance leastconn
 
   <% backends.each do |b| %>
   server <%= b[:name] %><%= b[:port] %> <%= b[:addr] %>:<%= b[:port] %> check port <%= b[:port].to_i + 20000 %> inter 10s

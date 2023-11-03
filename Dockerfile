@@ -29,6 +29,6 @@ ADD uncachable /etc/polipo/uncachable
 COPY healtcheck.go /usr/src
 RUN go build /usr/src/healtcheck.go && mv healtcheck /usr/local/bin/healtcheck && rm /usr/src/healtcheck.go
 
-EXPOSE 5566 4444
+EXPOSE 5566 5568 4444
 
 CMD /usr/local/bin/start.rb
