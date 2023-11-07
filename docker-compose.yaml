@@ -1,11 +1,19 @@
 version: '3.7'
 services:
-  torproxy:
-    image: '${DOCKER_IMAGE:-rafaelcalleja/rotatting-proxy}:${DOCKER_TAG:-latest}'
+  tor-proxy:
+    image: '${DOCKER_IMAGE:-rafaelcalleja/rotatting-proxy:latest}'
     ports:
       - '${HAPROXY_PORT:-4444}:4444'
       - '${PROXY_PORT:-5566}:5566'
       - '${PROXY_STICKY_PORT:-5568}:5568'
     restart: on-failure
-    volumes:
-      - ./haproxy.cfg.erb:/usr/local/etc/haproxy.cfg.erb
+    #volumes:
+    #  - ./haproxy.cfg.erb:/usr/local/etc/haproxy.cfg.erb
+    #  - ./newnym.sh:/usr/local/bin/newnym.sh
+    environment:
+      tors: ${tors:-10}
+      exitnodes: ${exitnodes:-}
+      test_url: ${test_url:-https://check.torproject.org/api/ip}
+      NEW_CIRCUIT_PERIOD: ${NEW_CIRCUIT_PERIOD:-15}
+      NEWNYM_ON_HEALTHCHECK: ${NEWNYM_ON_HEALTHCHECK:-0}
+      HEALTHCHECK_TIMEOUT: ${HEALTHCHECK_TIMEOUT:-10}
