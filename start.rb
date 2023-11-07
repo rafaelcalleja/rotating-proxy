@@ -83,12 +83,13 @@ module Service
 
 
   class Tor < Base
-    attr_reader :port, :control_port
+    attr_reader :port, :control_port, :new_circuit_period
 
-    def initialize(port, control_port, exit_nodes)
+    def initialize(port, control_port, exit_nodes, new_circuit_period)
         @port = port
         @control_port = control_port
         @exit_nodes = exit_nodes
+        @new_circuit_period = new_circuit_period
         if !exit_nodes.nil?
           @exit_nodes = exit_nodes.split(',').map { |i| "\{#{i}\}"}.join(',')
         end
@@ -103,8 +104,8 @@ module Service
       args = [
         "--SocksPort #{port}",
 	      "--ControlPort #{control_port}",
-        "--NewCircuitPeriod 15",
-	      "--MaxCircuitDirtiness 15",
+        "--NewCircuitPeriod #{new_circuit_period}",
+	      "--MaxCircuitDirtiness #{new_circuit_period}",
 	      "--UseEntryGuards 0",
 	      "--UseEntryGuardsAsDirGuards 0",
 	      "--CircuitBuildTimeout 5",
@@ -174,9 +175,10 @@ module Service
     attr_reader :id
     attr_reader :tor, :polipo
 
-    def initialize(id, exit_nodes)
+    def initialize(id, exit_nodes, test_url, new_circuit_period)
       @id = id
-      @tor = Tor.new(tor_port, tor_control_port, exit_nodes)
+      @tor = Tor.new(tor_port, tor_control_port, exit_nodes, new_circuit_period)
+      @test_url = test_url
       @polipo = Polipo.new(polipo_port, tor: tor)
     end
 
@@ -211,12 +213,8 @@ module Service
     end
     alias_method :port, :polipo_port
 
-    def test_url
-      ENV['test_url'] || 'http://icanhazip.com'
-    end
-
     def working?
-      Excon.get(test_url, proxy: "http://127.0.0.1:#{port}", :read_timeout => 10).status == 200
+      Excon.get(@test_url, proxy: "http://127.0.0.1:#{port}", :read_timeout => 10).status == 200
     rescue
       false
     end
@@ -298,9 +296,12 @@ proxies = []
 
 tor_instances = ENV['tors'] || 10
 exit_nodes = ENV['exitnodes'] || ''
+test_url = ENV['test_url'] || 'https://check.torproject.org/api/ip'
+new_circuit_period = ENV['NEW_CIRCUIT_PERIOD'] || 15
+
 tor_instances.to_i.times.each do |id|
-  proxy = Service::Proxy.new(id, exit_nodes)
-  health_check = Service::HealthCheck.new(id + 40000, "http://127.0.0.1:#{id + 20000}", 'http://ifconfig.me')
+  proxy = Service::Proxy.new(id, exit_nodes, test_url, new_circuit_period)
+  health_check = Service::HealthCheck.new(id + 40000, "http://127.0.0.1:#{id + 20000}", test_url)
   haproxy.add_backend(proxy)
   proxy.start
   health_check.start
