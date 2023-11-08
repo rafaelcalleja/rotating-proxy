@@ -1,15 +1,16 @@
 version: '3.7'
 services:
-  tor-proxy:
+  torproxy:
     image: '${DOCKER_IMAGE:-rafaelcalleja/rotatting-proxy:latest}'
     ports:
       - '${HAPROXY_PORT:-4444}:4444'
       - '${PROXY_PORT:-5566}:5566'
       - '${PROXY_STICKY_PORT:-5568}:5568'
     restart: on-failure
-    #volumes:
-    #  - ./haproxy.cfg.erb:/usr/local/etc/haproxy.cfg.erb
-    #  - ./newnym.sh:/usr/local/bin/newnym.sh
+    volumes:
+      - ./haproxy.cfg.erb:/usr/local/etc/haproxy.cfg.erb
+      - ./newnym.sh:/usr/local/bin/newnym.sh
+      - ./healtcheck_arkose:/usr/local/bin/healtcheck
     environment:
       tors: ${tors:-10}
       exitnodes: ${exitnodes:-}
@@ -17,3 +18,9 @@ services:
       NEW_CIRCUIT_PERIOD: ${NEW_CIRCUIT_PERIOD:-15}
       NEWNYM_ON_HEALTHCHECK: ${NEWNYM_ON_HEALTHCHECK:-0}
       HEALTHCHECK_TIMEOUT: ${HEALTHCHECK_TIMEOUT:-10}
+      USER_AGENT: ${USER_AGENT:-}
+      SERVICE_URL: ${SERVICE_URL:-https://client-api.arkoselabs.com}
+      PUBLIC_KEY: ${PUBLIC_KEY:-}
+      SITE_URL: ${SITE_URL:-}
+      CAPI_VERSION: ${CAPI_VERSION:-}
+      CAPI_PKEY: ${CAPI_PKEY:-}
