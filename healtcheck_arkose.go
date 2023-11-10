@@ -34,6 +34,7 @@ func main() {
 	publicKey := flag.String("public-key", "", "${Service_URL}/fc/gt2/${Public_Key}")
 	capiVersion := flag.String("capi-version", "", "CAPI Version")
 	capiPkey := flag.String("capi-pkey", "", "enforcement.${PKEY}.html")
+	bda := flag.String("bda", "", "Browser data")
 
 	flag.Parse()
 
@@ -105,8 +106,12 @@ func main() {
 	// bw = Math.round(bt - (bt % 21600)
 	bw := strconv.FormatInt(bt-(bt%21600), 10)
 	bv := *userAgent
-	bda := Encrypt(bx, bv+bw)
-	bda = base64.StdEncoding.EncodeToString([]byte(bda))
+
+	if *bda == "" {
+		encrypt := Encrypt(bx, bv+bw)
+		encrypt = base64.StdEncoding.EncodeToString([]byte(encrypt))
+		bda = &encrypt
+	}
 
 	mux := http.NewServeMux()
 
@@ -117,7 +122,7 @@ func main() {
 		}
 
 		var res Response
-		response := postRequest(*serviceURL, *publicKey, bda, *userAgent, *proxyURL, *capiVersion, *capiPkey, *siteURL)
+		response := postRequest(*serviceURL, *publicKey, *bda, *userAgent, *proxyURL, *capiVersion, *capiPkey, *siteURL)
 
 		err := json.Unmarshal([]byte(response), &res)
 
@@ -175,7 +180,7 @@ func postRequest(serviceURL string, publicKey string, bda string, userAgent stri
 	req, _ := http.NewRequest("POST", publicUrl, strings.NewReader(data.Encode()))
 	req.Header.Add("authority", authority)
 	req.Header.Add("accept", "*/*")
-	req.Header.Add("accept-language", "ru-RU,ru;q=0.9")
+	req.Header.Add("accept-language", "en-US,en;q=0.9")
 	req.Header.Add("content-type", "application/x-www-form-urlencoded; charset=UTF-8")
 	req.Header.Add("origin", serviceURL)
 	req.Header.Add("referer", fmt.Sprintf("%s/v2/%s/enforcement.%s.html", serviceURL, capiVersion, capiPkey))
